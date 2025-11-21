@@ -1,6 +1,5 @@
 # MetaRL-Agent-Framework
 
-A research framework combining State Space Models (SSM), Meta-Learning (MAML), and Test-Time Adaptation for reinforcement learning.
 
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/sunghunkwag/SSM-MetaRL-TestCompute)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
