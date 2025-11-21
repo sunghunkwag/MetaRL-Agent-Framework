@@ -20,7 +20,65 @@ A modular meta-reinforcement learning framework with unified agent abstractions,
 - **Gymnasium Integration**: Full compatibility with OpenAI Gymnasium environments
 - **Automated Testing**: Comprehensive test suite with CI/CD integration
 - **Docker Support**: Production-ready containerized deployment
-- **High-Dimensional Benchmarks**: MuJoCo tasks with baseline comparisons
+- **High-Dimensional Benchmarks**: MuJoCo, Meta-World, and iMuJoCo support
+
+## Advanced Benchmarks
+
+The framework includes support for 4 major high-dimensional benchmark suites (10 distributions total):
+
+1.  **Standard MuJoCo**:
+    *   `halfcheetah-vel`, `ant-vel`, `walker2d-vel` (Velocity control)
+    *   `ant-dir` (Direction control)
+    *   `halfcheetah-gravity`, `ant-mass` (Dynamics randomization)
+
+2.  **Meta-World (v2)**:
+    *   `metaworld-ml10`: 10 train / 5 test manipulation tasks (39-dim obs)
+    *   `metaworld-ml45`: 45 train / 5 test manipulation tasks
+
+3.  **iMuJoCo**:
+    *   `imujoco-halfcheetah`: Robustness/generalization benchmarks
+    *   `imujoco-ant`: Complex morphology generalization
+
+### Running Benchmarks
+
+The `main.py` script supports a dedicated `--benchmark-mode` for rigorous evaluation.
+
+#### 1. Few-Shot Adaptation
+Train on meta-train tasks, then evaluate adaptation performance on held-out test tasks given `K` shots (gradient steps).
+
+```bash
+# Meta-World ML10 with 1, 5, and 10 shots
+python main.py --task-dist metaworld-ml10 \
+               --method ssm \
+               --benchmark-mode \
+               --few-shot 1 5 10 \
+               --epochs 50
+```
+
+#### 2. Zero-Shot Generalization
+Train on meta-train tasks, then evaluate directly on held-out test tasks without adaptation.
+
+```bash
+# iMuJoCo HalfCheetah Zero-Shot with custom split
+python main.py --task-dist imujoco-halfcheetah \
+               --method ssm \
+               --benchmark-mode \
+               --zero-shot \
+               --train-tasks 0 1 2 \
+               --test-tasks 3 4 \
+               --epochs 20
+```
+
+#### 3. Standard Benchmark Run
+Run meta-training with periodic evaluation on held-out tasks.
+
+```bash
+# Standard run
+python main.py --task-dist metaworld-ml45 \
+               --method ssm \
+               --benchmark-mode \
+               --epochs 100
+```
 
 ## Project Structure
 
@@ -42,7 +100,9 @@ MetaRL-Agent-Framework/
 │   └── multi_agent_demo.py    # Multi-agent demo
 ├── experiments/          # Experiment scripts
 │   ├── quick_benchmark.py     # Quick benchmarks
-│   └── serious_benchmark.py   # MuJoCo benchmarks
+│   ├── serious_benchmark.py   # Full benchmark suite
+│   ├── task_distributions.py  # Benchmark definitions
+│   └── test_integration.py    # End-to-end tests
 └── tests/                # Test suite
 ```
 

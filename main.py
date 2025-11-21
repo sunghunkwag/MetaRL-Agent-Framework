@@ -209,8 +209,66 @@ def main():
     parser.add_argument('--outer_lr', type=float, default=0.001, help='Outer learning rate for MetaMAML')
     parser.add_argument('--adapt_lr', type=float, default=0.01, help='Learning rate for test-time adaptation')
     parser.add_argument('--num_adapt_steps', type=int, default=50, help='Total number of adaptation steps during test')
+
+    # Benchmark arguments
+    parser.add_argument('--task-dist', type=str, help='Task distribution name (e.g. metaworld-ml10)')
+    parser.add_argument('--method', type=str, default='ssm', help='Method name (ssm, lstm, etc.)')
+    parser.add_argument('--benchmark-mode', action='store_true', help='Run in serious benchmark mode')
+    parser.add_argument('--few-shot', type=int, nargs='*', help='Number of shots for few-shot testing')
+    parser.add_argument('--zero-shot', action='store_true', help='Run zero-shot evaluation')
+    parser.add_argument('--train-tasks', type=int, nargs='+', help='Task IDs for training')
+    parser.add_argument('--test-tasks', type=int, nargs='+', help='Task IDs for testing')
+
     args = parser.parse_args()
     
+    if args.benchmark_mode:
+        from experiments.serious_benchmark import BenchmarkRunner
+
+        # Configuration for benchmark
+        config = {
+            'hidden_dim': args.hidden_dim,
+            'inner_lr': args.inner_lr,
+            'outer_lr': args.outer_lr,
+            'adapt_lr': args.adapt_lr,
+            'device': 'cuda' if torch.cuda.is_available() else 'cpu',
+            'epochs': args.num_epochs
+        }
+
+        if args.train_tasks:
+            config['train_tasks'] = args.train_tasks
+        if args.test_tasks:
+            config['test_tasks'] = args.test_tasks
+
+        print(f"Starting Benchmark Mode: {args.task_dist} with {args.method}")
+        runner = BenchmarkRunner(args.task_dist, args.method, config)
+
+        if args.few_shot:
+            # Train first
+            runner.train(args.num_epochs)
+
+            # Run few-shot test
+            shots = args.few_shot
+            print(f"Running Few-Shot Test ({shots} shots)...")
+
+            from collections import defaultdict
+            avg_results = defaultdict(list)
+
+            for test_id in runner.test_task_ids:
+                res = runner.few_shot_test(test_id, shots)
+                for k, v in res.items():
+                    avg_results[k].append(v)
+
+            final_res = {k: np.mean(v) for k, v in avg_results.items()}
+            print("Few-Shot Results:", final_res)
+
+        elif args.zero_shot:
+            runner.zero_shot_test(runner.train_task_ids, runner.test_task_ids)
+
+        else:
+            runner.run(num_epochs=args.num_epochs)
+
+        return
+
     if args.batch_size != 1:
         print("Warning: This example currently assumes batch_size=1 for simplicity.")
     
