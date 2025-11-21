@@ -226,15 +226,7 @@ The `Environment` class in `env_runner/environment.py` provides a Gymnasium wrap
 - Batch processing support
 - Automatic state normalization (optional)
 
-## Requirements
 
-- Python >= 3.8
-- PyTorch >= 2.0
-- Gymnasium >= 1.0
-- NumPy
-- pytest (for development)
-
-See `pyproject.toml` for complete dependencies.
 
 ## Docker Deployment
 
@@ -284,9 +276,7 @@ This framework builds upon research in:
 - Test-time adaptation techniques
 - Reinforcement learning with Gymnasium
 
-## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Contact
 
