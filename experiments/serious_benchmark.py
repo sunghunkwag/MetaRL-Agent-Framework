@@ -218,10 +218,10 @@ class BenchmarkRunner:
             
             if hidden_state is not None:
                 loss, _ = adapter.update_step(x, y, hidden_state)
-                # Update hidden state
+                # Update hidden state - SSM returns single tensor, not tuple
                 with torch.no_grad():
                     _, hidden_state = self.model(x, hidden_state)
-                    hidden_state = hidden_state.detach() if isinstance(hidden_state, torch.Tensor) else tuple(h.detach() for h in hidden_state)
+                    hidden_state = hidden_state.detach()
             else:
                 # For stateless models, we can't use update_step directly
                 # Just compute loss
@@ -403,4 +403,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
