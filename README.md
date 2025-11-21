@@ -1,4 +1,4 @@
-# SSM-MetaRL-TestCompute
+# MetaRL-Agent-Framework
 
 A research framework combining State Space Models (SSM), Meta-Learning (MAML), and Test-Time Adaptation for reinforcement learning.
 
