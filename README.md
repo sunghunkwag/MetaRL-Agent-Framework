@@ -10,6 +10,7 @@
 ## Features
 
 - **Unified Agent Abstraction**: Clean, unified `Agent` interface with `act`, `observe`, `update`, and `adapt`.
+- **Agent Wrappers**: `MetaMAMLAgent` and `AdaptationAgent` wrappers for easy integration.
 - **Agent wrappers**: `MetaMAMLAgent` and `AdaptationAgent` wrappers for easy integration.
 - **Multi-Agent Coordination**: Basic coordinator to run multiple agents in parallel or sequence.
 - **State Space Models (SSM)** for temporal dynamics modeling
@@ -53,6 +54,24 @@ The `Agent` class in `core/agent.py` defines the contract:
 - `adapt(...) -> info`: Inner-loop adaptation
 - `update(...) -> info`: Outer-loop meta-update
 
+### Wrappers
+
+- **MetaMAMLAgent**: Wraps `MetaMAML` for meta-learning tasks.
+- **AdaptationAgent**: Wraps `Adapter` for test-time adaptation.
+
+### Usage Example
+
+
+The framework now supports a unified Agent API (`act`, `observe`, `adapt`, `update`) to allow seamless interchange of different learning strategies.
+
+### Base Agent
+
+The `Agent` class in `core/agent.py` defines the contract:
+- `act(observation) -> action`
+- `observe(observation, action, reward, ...) -> None`
+- `adapt(...) -> info`: Inner-loop adaptation
+- `update(...) -> info`: Outer-loop meta-update
+
 ### wrappers
 
 - **MetaMAMLAgent**: Wraps `MetaMAML` for meta-learning tasks.
@@ -82,6 +101,9 @@ actions = coordinator.run_step_all(observations)
 See `examples/multi_agent_demo.py` for a complete runnable example.
 
 ## Interactive Demo
+
+**Try it now**: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sunghunkwag/SSM-MetaRL-TestCompute/blob/main/demo.ipynb)
+
 
 **Try it now**: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sunghunkwag/SSM-MetaRL-TestCompute/blob/main/demo.ipynb)
 
@@ -124,6 +146,13 @@ python main.py --env_name CartPole-v1 --num_epochs 20
 ... (Same as before)
 
 ### Environment Runner
+
+The `Environment` class in `env_runner/environment.py` provides a wrapper around Gymnasium environments.
+
+**Key Features**:
+- Simplified API: `reset()` returns only observation (not tuple)
+- Simplified API: `step(action)` returns 4 values (obs, reward, done, info)
+- Batch processing support with `batch_size` parameter
 ... (Same as before)
 
 ## Requirements
@@ -137,3 +166,24 @@ python main.py --env_name CartPole-v1 --num_epochs 20
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Citation
+
+If you use this framework in your research, please cite:
+
+```bibtex
+@software{ssm_metarl_testcompute,
+  author = {sunghunkwag},
+  title = {SSM-MetaRL-TestCompute: A Framework for Meta-RL with State Space Models},
+  year = {2025},
+  url = {https://github.com/sunghunkwag/SSM-MetaRL-TestCompute}
+}
+```
+
+## Acknowledgments
+
+This framework builds upon research in:
+- State Space Models for sequence modeling
+- Model-Agnostic Meta-Learning (MAML)
+- Test-time adaptation techniques
+- Reinforcement learning with Gymnasium
