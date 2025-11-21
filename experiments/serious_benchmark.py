@@ -273,15 +273,11 @@ class BenchmarkRunner:
             y_flat = next_obs[:, t, :]
 
             if hidden_state is not None:
-                # Adapter.update_step handles detach internally now
-                loss, steps = adapter.update_step(x_flat, y_flat, hidden_state)
-                steps_taken += steps
-
-                # Update hidden state for next step
+                loss, _ = adapter.update_step(x, y, hidden_state)
+                # Update hidden state - SSM returns single tensor, not tuple
                 with torch.no_grad():
-                    _, hidden_state = self.model(x_flat, hidden_state)
-                    # Ensure hidden state is detached for next iteration (double safety)
-                    # hidden_state = hidden_state.detach()
+                    _, hidden_state = self.model(x, hidden_state)
+                    hidden_state = hidden_state.detach()
             else:
                 # For stateless models
                 self.model.eval()
