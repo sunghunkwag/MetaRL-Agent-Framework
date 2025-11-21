@@ -10,6 +10,9 @@ A research framework combining State Space Models (SSM), Meta-Learning (MAML), a
 
 ## Features
 
+- **Unified Agent Abstraction**: Clean, unified `Agent` interface with `act`, `observe`, `update`, and `adapt`.
+- **Agent Wrappers**: `MetaMAMLAgent` and `AdaptationAgent` wrappers for easy integration.
+- **Multi-Agent Coordination**: Basic coordinator to run multiple agents in parallel or sequence.
 - **State Space Models (SSM)** for temporal dynamics modeling
 - **Meta-Learning (MAML)** for fast adaptation across tasks
 - **Test-Time Adaptation** for online model improvement
@@ -21,96 +24,69 @@ A research framework combining State Space Models (SSM), Meta-Learning (MAML), a
 
 ## Project Structure
 
-- **core/**: Core model implementations
-  - `ssm.py`: State Space Model implementation (returns state)
+- **core/**: Core model implementations and Agent abstractions
+  - `agent.py`: Base `Agent` class defining the unified interface.
+  - `coordinator.py`: `AgentCoordinator` for managing multiple agents.
+  - `ssm.py`: State Space Model implementation.
 - **meta_rl/**: Meta-learning algorithms
-  - `meta_maml.py`: MetaMAML implementation (handles stateful models and time series input)
+  - `maml_agent.py`: `MetaMAMLAgent` wrapper for MAML.
+  - `meta_maml.py`: MetaMAML implementation.
 - **adaptation/**: Test-time adaptation
-  - `test_time_adaptation.py`: Adapter class (API updated, manages hidden state updates internally)
+  - `adaptation_agent.py`: `AdaptationAgent` wrapper for Adapter.
+  - `test_time_adaptation.py`: Adapter class.
 - **env_runner/**: Environment utilities
   - `environment.py`: Gymnasium environment wrapper
+- **examples/**: Example scripts
+  - `multi_agent_demo.py`: Demonstration of multi-agent coordination.
 - **experiments/**: Experiment scripts and benchmarks
-  - `quick_benchmark.py`: Quick benchmark suite (updated MAML API calls)
-  - `serious_benchmark.py`: High-dimensional MuJoCo benchmarks with baseline comparisons
-  - `task_distributions.py`: Meta-learning task distributions
-  - `baselines.py`: LSTM, GRU, Transformer baseline implementations
-- **tests/**: Test suite for all components (includes parameter mutation verification)
+  - `quick_benchmark.py`: Quick benchmark suite.
+  - `serious_benchmark.py`: High-dimensional MuJoCo benchmarks.
+
+## Agent System
+
+The framework now supports a unified Agent API (`act`, `observe`, `adapt`, `update`) to allow seamless interchange of different learning strategies.
+
+### Base Agent
+
+The `Agent` class in `core/agent.py` defines the contract:
+- `act(observation) -> action`
+- `observe(observation, action, reward, ...) -> None`
+- `adapt(...) -> info`: Inner-loop adaptation
+- `update(...) -> info`: Outer-loop meta-update
+
+### Wrappers
+
+- **MetaMAMLAgent**: Wraps `MetaMAML` for meta-learning tasks.
+- **AdaptationAgent**: Wraps `Adapter` for test-time adaptation.
+
+### Usage Example
+
+```python
+from core.coordinator import AgentCoordinator
+from meta_rl.maml_agent import MetaMAMLAgent
+from adaptation.adaptation_agent import AdaptationAgent
+
+# ... Setup models ...
+
+agent_maml = MetaMAMLAgent(maml_algo)
+agent_adapt = AdaptationAgent(adapter)
+
+coordinator = AgentCoordinator()
+coordinator.register_agent(agent_maml, "MAML")
+coordinator.register_agent(agent_adapt, "Adapt")
+
+# Run agents
+observations = env.reset()
+actions = coordinator.run_step_all(observations)
+```
+
+See `examples/multi_agent_demo.py` for a complete runnable example.
 
 ## Interactive Demo
 
 **Try it now**: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sunghunkwag/SSM-MetaRL-TestCompute/blob/main/demo.ipynb)
 
 Run the complete demo in your browser with Google Colab - no installation required!
-
-### Demo Notebook Features
-
-- Correct API Usage: Demonstrates proper MetaMAML and Adapter APIs
-- Time Series Handling: Proper 3D tensor shapes (batch, time, features)
-- Hidden State Management: Correct initialization and propagation
-- Visualization: Loss curves and adaptation progress
-- Evaluation: Model performance metrics
-- High-dimensional Benchmarks Preview: Introduces MuJoCo tasks and baseline comparisons
-
----
-
-## Advanced Benchmarks
-
-**Beyond Simple Tasks**: We've implemented benchmarks on high-dimensional MuJoCo tasks with baseline comparisons.
-
-### Motivation
-
-Simple benchmarks (CartPole, Pendulum) have limitations for research validation:
-- Low dimensional (4-8 state dims)
-- Simple dynamics
-- Limited baseline comparisons
-- No scaling validation
-
-### Our Approach
-
-**High-Dimensional Tasks**
-- HalfCheetah-v4: 17-dim state, 6-dim action
-- Ant-v4: 27-dim state, 8-dim action
-- Humanoid-v4: 376-dim state, 17-dim action
-
-**Baseline Comparisons**
-- LSTM-MAML (76K params, O(n²) complexity)
-- GRU-MAML (57K params, O(n²) complexity)
-- Transformer-MAML (400K params, O(n²) complexity) 
-- MLP-MAML (20K params, no sequence modeling)
-- **SSM-MAML (53K params, O(n) complexity)**
-
-**Meta-Learning Task Distributions**
-- Velocity tasks: Different target speeds
-- Direction tasks: Different goal directions
-- Dynamics tasks: Varying gravity/mass
-
-### Quick Start with Benchmarks
-
-```bash
-# Install MuJoCo dependencies
-pip install 'gymnasium[mujoco]'
-
-# Run benchmark on HalfCheetah-Vel
-python experiments/serious_benchmark.py --task halfcheetah-vel --method ssm --epochs 50
-
-# Compare all methods
-python experiments/serious_benchmark.py --task ant-vel --method all --epochs 100
-
-# Visualize results
-python experiments/visualize_results.py --results-dir results --output-dir figures
-```
-
-### Results Preview
-
-| Method | Parameters | Complexity | HalfCheetah-Vel |
-|--------|------------|------------|----------------|
-| **SSM** | 53K | O(n) | ✅ Tested |
-| LSTM | 76K | O(n²) | ✅ Tested |
-| GRU | 57K | O(n²) | ✅ Tested |
-| Transformer | 400K | O(n²) | ✅ Tested |
-| MLP | 20K | - | ✅ Tested |
-
-**See [experiments/README.md](experiments/README.md) for detailed documentation.**
 
 ---
 
@@ -122,22 +98,12 @@ python experiments/visualize_results.py --results-dir results --output-dir figur
 git clone https://github.com/sunghunkwag/SSM-MetaRL-TestCompute.git
 cd SSM-MetaRL-TestCompute
 pip install -e .
-
-# For development:
-pip install -e .[dev]
 ```
 
-### Docker Installation
+### Run Multi-Agent Demo
 
 ```bash
-# Pull the latest container
-docker pull ghcr.io/sunghunkwag/ssm-metarl-testcompute:latest
-
-# Run main script
-docker run --rm ghcr.io/sunghunkwag/ssm-metarl-testcompute:latest python main.py --env_name CartPole-v1
-
-# Run benchmark
-docker run --rm ghcr.io/sunghunkwag/ssm-metarl-testcompute:latest python experiments/quick_benchmark.py
+python examples/multi_agent_demo.py
 ```
 
 ### Run Main Script
@@ -145,42 +111,7 @@ docker run --rm ghcr.io/sunghunkwag/ssm-metarl-testcompute:latest python experim
 ```bash
 # Train on CartPole environment
 python main.py --env_name CartPole-v1 --num_epochs 20
-
-# Train on Pendulum environment
-python main.py --env_name Pendulum-v1 --num_epochs 10
 ```
-
-### Run Benchmark
-
-```bash
-python experiments/quick_benchmark.py
-```
-
-### Run Tests
-
-```bash
-pytest
-```
-
-## Test Results
-
-The framework has been tested with the following results:
-
-| Test Category | Status | Pass Rate |
-|--------------|--------|-----------|
-| Unit Tests | ✅ All Passing | 100% |
-| CI/CD Pipeline | ✅ Automated | Python 3.8-3.11 |
-| CartPole-v1 | ✅ Passed | Loss reduction: 91.5% - 93.7% |
-| Pendulum-v1 | ✅ Passed | Loss reduction: 95.9% |
-| Benchmarks | ✅ Passed | Loss reduction: 86.8% |
-
-### Verified Functionality
-
-- ✅ State Space Model (SSM) - All features working
-- ✅ MetaMAML - Meta-learning operational  
-- ✅ Test-Time Adaptation - Adaptation effects confirmed
-- ✅ Environment Runner - Multiple environments supported
-- ✅ Docker Container - Automated builds and deployment
 
 ## Core Components
 
@@ -323,125 +254,6 @@ The `Environment` class in `env_runner/environment.py` provides a wrapper around
 - Simplified API: `reset()` returns only observation (not tuple)
 - Simplified API: `step(action)` returns 4 values (obs, reward, done, info)
 - Batch processing support with `batch_size` parameter
-
-## Main Script (`main.py`)
-
-Demonstrates the complete workflow using the updated APIs.
-
-- Collects data and returns it as a dictionary of tensors
-- Calls `MetaMAML.meta_update` with `tasks` list and `initial_hidden_state`
-- Calls `Adapter.update_step` with `x`, `y` (target), and the correct `hidden_state`
-- Sets SSM `output_dim` to match the target dimension
-
-## Experiments
-
-### Quick Benchmark (`experiments/quick_benchmark.py`)
-
-Runs a quick benchmark across multiple configurations to verify the framework's functionality.
-
-**Features**:
-- Tests multiple environments (CartPole, Pendulum)
-- Measures adaptation effectiveness
-- Reports loss reduction percentages
-
-## Docker Usage
-
-Uses multi-stage build for efficient containerization with automated CI/CD.
-
-**Pull Pre-built Container:**
-
-```bash
-# Latest version
-docker pull ghcr.io/sunghunkwag/ssm-metarl-testcompute:latest
-
-# Specific version
-docker pull ghcr.io/sunghunkwag/ssm-metarl-testcompute:main
-```
-
-**Build Locally:**
-
-```bash
-docker build -t ssm-metarl .
-```
-
-**Run:**
-
-```bash
-# Run main script
-docker run --rm ghcr.io/sunghunkwag/ssm-metarl-testcompute:latest python main.py --env_name Pendulum-v1 --num_epochs 10
-
-# Run benchmark
-docker run --rm ghcr.io/sunghunkwag/ssm-metarl-testcompute:latest python experiments/quick_benchmark.py
-
-# Run tests
-docker run --rm ghcr.io/sunghunkwag/ssm-metarl-testcompute:latest pytest
-```
-
-## Recent Updates (v1.3.0)
-
-### Demo Notebook Fixes (Latest)
-
-1. **MetaMAML API Correction** (Commit: TBD)
-   - **Fixed**: Corrected `meta_update()` to use `tasks` list and `initial_hidden_state`
-   - **Problem**: Demo was using non-existent `support_data`/`query_data` parameters
-   - **Solution**: Updated to match actual API: `meta_update(tasks, initial_hidden_state, loss_fn)`
-   - **Impact**: Demo now runs without errors in Colab
-
-2. **Adapter API Correction** (Commit: TBD)
-   - **Fixed**: Replaced non-existent `adapt()` method with `update_step()`
-   - **Problem**: Demo was calling `adapter.adapt(observations, targets)`
-   - **Solution**: Use `update_step(x, y, hidden_state)` in a loop
-   - **Impact**: Proper adaptation with loss tracking
-
-3. **Data Shape Fixes** (Commit: TBD)
-   - **Fixed**: Proper 3D tensor reshaping for time series (batch, time, features)
-   - **Problem**: Data was passed as 2D tensors
-   - **Solution**: Added `.unsqueeze(0)` to create batch dimension
-   - **Impact**: MetaMAML can now process sequences correctly
-
-4. **Hidden State Management** (Commit: TBD)
-   - **Fixed**: Added proper hidden state initialization and propagation
-   - **Problem**: Stateful model wasn't receiving required hidden_state
-   - **Solution**: Initialize with `model.init_hidden()` and pass through all operations
-   - **Impact**: SSM model works correctly with sequential data
-
-### Previous Updates (v1.2.0)
-
-1. **PyTorch Autograd Error Fix** (Commit: e084cf6)
-   - **Fixed**: Added `hidden_state.detach()` in adaptation loop
-   - **Problem**: Computational graph was being reused across gradient steps
-   - **Solution**: Detach hidden state to prevent autograd errors
-   - **Impact**: All tests now pass, adaptation works correctly
-
-2. **Environment API Compatibility** (Commit: acbd1cf)
-   - Fixed `env.reset()` to match Environment wrapper return values
-   - Fixed `env.step()` to handle 4 return values instead of 5
-   - Updated in 4 locations across `main.py`
-
-3. **Action Space Handling** (Commit: acbd1cf)
-   - Added dimension slicing for discrete action spaces
-   - Prevents errors when model output_dim > action_space.n
-   - Ensures valid action sampling
-
-4. **Import Fixes** (Commit: acbd1cf)
-   - Fixed incorrect import in `experiments/quick_benchmark.py`
-   - Changed `import nn_functional as F` to `import torch.nn.functional as F`
-
-### Test Results After All Fixes
-
-All components work correctly:
-- ✅ `main.py` works with CartPole-v1 and Pendulum-v1
-- ✅ `experiments/quick_benchmark.py` runs without errors
-- ✅ All unit tests pass (100% success rate)
-- ✅ CI/CD pipeline passes on Python 3.8, 3.9, 3.10, 3.11
-- ✅ Docker container builds and runs successfully
-
-### Container Deployment
-
-- **Automated builds** on every commit to main branch
-- **Multi-stage Docker build** for optimized image size
-- **Available on GitHub Container Registry**: `ghcr.io/sunghunkwag/ssm-metarl-testcompute`
-- **Tags**: `latest`, `main`, `sha-<commit>`
 
 ## Requirements
 
