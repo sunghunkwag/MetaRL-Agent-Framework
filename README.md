@@ -11,7 +11,6 @@
 
 - **Unified Agent Abstraction**: Clean, unified `Agent` interface with `act`, `observe`, `update`, and `adapt`.
 - **Agent Wrappers**: `MetaMAMLAgent` and `AdaptationAgent` wrappers for easy integration.
-- **Agent wrappers**: `MetaMAMLAgent` and `AdaptationAgent` wrappers for easy integration.
 - **Multi-Agent Coordination**: Basic coordinator to run multiple agents in parallel or sequence.
 - **State Space Models (SSM)** for temporal dynamics modeling
 - **Meta-Learning (MAML)** for fast adaptation across tasks
