@@ -38,9 +38,9 @@ dependencies = [
     "numpy>=1.20.0",
     "torch>=2.0.0",
     "gymnasium>=0.26.0",
-    "metaworld @ git+https://github.com/Farama-Foundation/Metaworld.git",
-    "imujoco @ git+https://github.com/facebookresearch/iMuJoCo.git",
     "gymnasium[mujoco]>=1.0.0",
+    "metaworld @ git+https://github.com/Farama-Foundation/Metaworld.git"
+    # iMuJoCo support is optional. See README for manual install instructions.
 ]
 
 [project.optional-dependencies]
