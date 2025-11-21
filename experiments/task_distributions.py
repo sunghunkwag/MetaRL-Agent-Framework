@@ -10,6 +10,17 @@ import gymnasium as gym
 import numpy as np
 from typing import List, Tuple, Optional, Dict, Any
 
+# Try to import optional dependencies
+try:
+    import metaworld
+except ImportError:
+    metaworld = None
+
+try:
+    import imujoco
+except ImportError:
+    imujoco = None
+
 
 class TaskDistribution:
     """Base class for task distributions."""
@@ -37,6 +48,13 @@ class TaskDistribution:
     def get_all_tasks(self):
         """Get all tasks in the distribution."""
         return [self.create_task(i) for i in range(self.num_tasks)]
+
+    def get_train_test_split(self) -> Tuple[List[int], List[int]]:
+        """
+        Return train and test task IDs.
+        Returns None if no inherent split exists.
+        """
+        return None
 
 
 class VelocityTask(gym.Wrapper):
@@ -266,6 +284,135 @@ class AntMassDistribution(TaskDistribution):
         return MassTask(env, self.task_params[task_id])
 
 
+class MetaWorldDistribution(TaskDistribution):
+    """Base class for MetaWorld distributions."""
+
+    def __init__(self, benchmark_name: str):
+        if metaworld is None:
+            raise ImportError("MetaWorld is not installed. Please install it with: pip install metaworld")
+
+        if benchmark_name == 'ml10':
+            self.benchmark = metaworld.ML10()
+        elif benchmark_name == 'ml45':
+            self.benchmark = metaworld.ML45()
+        else:
+            raise ValueError(f"Unknown MetaWorld benchmark: {benchmark_name}")
+
+        # Group tasks by env_name to ensure unique task ID per environment
+        tasks_by_env = {} # env_name -> {'cls': cls, 'tasks': [], 'split': split}
+
+        # Process train tasks
+        for task in self.benchmark.train_tasks:
+            name = task.env_name
+            if name not in tasks_by_env:
+                tasks_by_env[name] = {
+                    'cls': self.benchmark.train_classes[name],
+                    'tasks': [],
+                    'split': 'train'
+                }
+            tasks_by_env[name]['tasks'].append(task)
+
+        # Process test tasks
+        for task in self.benchmark.test_tasks:
+            name = task.env_name
+            if name not in tasks_by_env:
+                tasks_by_env[name] = {
+                    'cls': self.benchmark.test_classes[name],
+                    'tasks': [],
+                    'split': 'test'
+                }
+            tasks_by_env[name]['tasks'].append(task)
+
+        # Convert to list
+        # We want a stable ordering. MetaWorld classes keys are usually stable enough
+        # or we sort by name.
+        self.task_params = []
+
+        # Add all train tasks first (sorted by name)
+        train_envs = [k for k, v in tasks_by_env.items() if v['split'] == 'train']
+        train_envs.sort()
+        for name in train_envs:
+            entry = tasks_by_env[name]
+            self.task_params.append((entry['cls'], entry['tasks'], 'train'))
+
+        # Add all test tasks (sorted by name)
+        test_envs = [k for k, v in tasks_by_env.items() if v['split'] == 'test']
+        test_envs.sort()
+        for name in test_envs:
+            entry = tasks_by_env[name]
+            self.task_params.append((entry['cls'], entry['tasks'], 'test'))
+
+        super().__init__(f'metaworld-{benchmark_name}', self.task_params)
+
+    def create_task(self, task_id: int):
+        env_cls, tasks, split = self.task_params[task_id]
+        env = env_cls()
+        # Sample a random variation from the list of tasks for this environment
+        task = np.random.choice(tasks)
+        env.set_task(task)
+        return env
+
+    def get_train_test_split(self) -> Tuple[List[int], List[int]]:
+        train_ids = [i for i, t in enumerate(self.task_params) if t[2] == 'train']
+        test_ids = [i for i, t in enumerate(self.task_params) if t[2] == 'test']
+        return train_ids, test_ids
+
+
+class MetaWorldML10Distribution(MetaWorldDistribution):
+    """Meta-World ML10 Benchmark (10 train tasks, 5 test tasks)."""
+    def __init__(self):
+        super().__init__('ml10')
+
+
+class MetaWorldML45Distribution(MetaWorldDistribution):
+    """Meta-World ML45 Benchmark (45 train tasks, 5 test tasks)."""
+    def __init__(self):
+        super().__init__('ml45')
+
+
+class IMuJoCoDistribution(TaskDistribution):
+    """Base class for iMuJoCo distributions."""
+
+    def __init__(self, robot_name: str):
+        # We don't strictly require imujoco import if it just registers envs
+        # but we do need it to be installed.
+
+        all_envs = list(gym.envs.registry.keys())
+        # Filter for iMuJoCo environments matching robot name
+        # Note: iMuJoCo envs might be named like 'iMuJoCo/HalfCheetah-v0' or similar
+        self.env_ids = [
+            id for id in all_envs
+            if 'imujoco' in id.lower()
+            and robot_name.lower() in id.lower()
+        ]
+
+        self.env_ids.sort()
+
+        if not self.env_ids:
+            print(f"Warning: No iMuJoCo environments found for {robot_name}. "
+                  "Make sure iMuJoCo is installed and environments are registered.")
+
+        super().__init__(f'imujoco-{robot_name.lower()}', self.env_ids)
+
+    def create_task(self, task_id: int):
+        if not self.task_params:
+             raise ValueError("No tasks available in this distribution.")
+        env_id = self.task_params[task_id]
+        return gym.make(env_id)
+
+
+class IMuJoCoHalfCheetahDistribution(IMuJoCoDistribution):
+    """iMuJoCo HalfCheetah Benchmark."""
+    def __init__(self):
+        super().__init__("HalfCheetah")
+
+
+class IMuJoCoAntDistribution(IMuJoCoDistribution):
+    """iMuJoCo Ant Benchmark."""
+    def __init__(self):
+        super().__init__("Ant")
+
+
 # ============================================================================
 # Registry
 # ============================================================================
@@ -277,6 +424,10 @@ TASK_DISTRIBUTIONS = {
     'walker2d-vel': Walker2dVelDistribution,
     'halfcheetah-gravity': HalfCheetahGravityDistribution,
     'ant-mass': AntMassDistribution,
+    'metaworld-ml10': MetaWorldML10Distribution,
+    'metaworld-ml45': MetaWorldML45Distribution,
+    'imujoco-halfcheetah': IMuJoCoHalfCheetahDistribution,
+    'imujoco-ant': IMuJoCoAntDistribution,
 }
 
 
@@ -317,10 +468,21 @@ def test_task_distribution(distribution_name: str, num_episodes: int = 3):
     print(f"Testing: {distribution_name}")
     print(f"{'='*60}")
     
-    dist = get_task_distribution(distribution_name)
+    try:
+        dist = get_task_distribution(distribution_name)
+    except ImportError as e:
+        print(f"Skipping {distribution_name}: {e}")
+        return
+    except Exception as e:
+        print(f"Error creating {distribution_name}: {e}")
+        return
+
     print(f"Number of tasks: {dist.num_tasks}")
-    print(f"Task parameters: {dist.task_params}")
     
+    if dist.num_tasks == 0:
+        print("No tasks found!")
+        return
+
     # Test first task
     task = dist.sample_task(task_id=0)
     env_info = get_env_info(task)
@@ -372,4 +534,3 @@ if __name__ == "__main__":
     print("\n" + "="*60)
     print("All tests completed!")
     print("="*60)
-
