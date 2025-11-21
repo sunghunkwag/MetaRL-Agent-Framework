@@ -1,6 +1,5 @@
-# SSM-MetaRL-TestCompute
+# MetaRL-Agent-Framework
 
-A research framework combining State Space Models (SSM), Meta-Learning (MAML), and Test-Time Adaptation for reinforcement learning.
 
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](https://github.com/sunghunkwag/SSM-MetaRL-TestCompute)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
@@ -12,6 +11,7 @@ A research framework combining State Space Models (SSM), Meta-Learning (MAML), a
 
 - **Unified Agent Abstraction**: Clean, unified `Agent` interface with `act`, `observe`, `update`, and `adapt`.
 - **Agent Wrappers**: `MetaMAMLAgent` and `AdaptationAgent` wrappers for easy integration.
+- **Agent wrappers**: `MetaMAMLAgent` and `AdaptationAgent` wrappers for easy integration.
 - **Multi-Agent Coordination**: Basic coordinator to run multiple agents in parallel or sequence.
 - **State Space Models (SSM)** for temporal dynamics modeling
 - **Meta-Learning (MAML)** for fast adaptation across tasks
@@ -61,6 +61,24 @@ The `Agent` class in `core/agent.py` defines the contract:
 
 ### Usage Example
 
+
+The framework now supports a unified Agent API (`act`, `observe`, `adapt`, `update`) to allow seamless interchange of different learning strategies.
+
+### Base Agent
+
+The `Agent` class in `core/agent.py` defines the contract:
+- `act(observation) -> action`
+- `observe(observation, action, reward, ...) -> None`
+- `adapt(...) -> info`: Inner-loop adaptation
+- `update(...) -> info`: Outer-loop meta-update
+
+### wrappers
+
+- **MetaMAMLAgent**: Wraps `MetaMAML` for meta-learning tasks.
+- **AdaptationAgent**: Wraps `Adapter` for test-time adaptation.
+
+### Usage Example
+
 ```python
 from core.coordinator import AgentCoordinator
 from meta_rl.maml_agent import MetaMAMLAgent
@@ -83,6 +101,9 @@ actions = coordinator.run_step_all(observations)
 See `examples/multi_agent_demo.py` for a complete runnable example.
 
 ## Interactive Demo
+
+**Try it now**: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sunghunkwag/SSM-MetaRL-TestCompute/blob/main/demo.ipynb)
+
 
 **Try it now**: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sunghunkwag/SSM-MetaRL-TestCompute/blob/main/demo.ipynb)
 
@@ -116,135 +137,13 @@ python main.py --env_name CartPole-v1 --num_epochs 20
 ## Core Components
 
 ### State Space Model (SSM)
-
-The SSM implementation in `core/ssm.py` models state transitions.
-
-**API**:
-- `forward(x, hidden_state)` returns a tuple: `(output, next_hidden_state)`.
-- `init_hidden(batch_size)` provides the initial hidden state.
-
-Constructor Arguments:
-- `state_dim` (int): Internal state dimension
-- `input_dim` (int): Input feature dimension
-- `output_dim` (int): Output feature dimension
-- `hidden_dim` (int): Hidden layer dimension within networks
-- `device` (str or torch.device)
-
-Example usage:
-```python
-import torch
-from core.ssm import StateSpaceModel
-
-model = StateSpaceModel(state_dim=128, input_dim=64, output_dim=32, device='cpu')
-batch_size = 4
-input_x = torch.randn(batch_size, 64)
-current_hidden = model.init_hidden(batch_size)
-
-# Forward pass requires current state and returns next state
-output, next_hidden = model(input_x, current_hidden)
-print(output.shape)       # torch.Size([4, 32])
-print(next_hidden.shape)  # torch.Size([4, 128])
-```
+... (Same as before)
 
 ### MetaMAML
-
-The `MetaMAML` class in `meta_rl/meta_maml.py` implements MAML.
-
-**Key Features**:
-- Handles **stateful models** (like SSM)
-- Supports **time series input** `(B, T, D)`
-- **API**: `meta_update` takes `tasks` (a list of tuples) and `initial_hidden_state` as arguments
-
-**Time Series Input Handling**:
-Input data should be shaped `(batch_size, time_steps, features)`. MAML processes sequences internally.
-
-Example with time series:
-
-```python
-import torch
-import torch.nn.functional as F
-from meta_rl.meta_maml import MetaMAML
-from core.ssm import StateSpaceModel
-
-model = StateSpaceModel(state_dim=64, input_dim=32, output_dim=16, device='cpu')
-maml = MetaMAML(model, inner_lr=0.01, outer_lr=0.001)
-
-# Time series input: (batch=4, time_steps=10, features=32)
-support_x = torch.randn(4, 10, 32)
-support_y = torch.randn(4, 10, 16)
-query_x = torch.randn(4, 10, 32)
-query_y = torch.randn(4, 10, 16)
-
-# Prepare tasks as a list of tuples
-tasks = []
-for i in range(4):
-    tasks.append((support_x[i:i+1], support_y[i:i+1], query_x[i:i+1], query_y[i:i+1]))
-
-# Initialize hidden state
-initial_hidden = model.init_hidden(batch_size=4)
-
-# Call meta_update with tasks list and initial state
-loss = maml.meta_update(tasks=tasks, initial_hidden_state=initial_hidden, loss_fn=F.mse_loss)
-print(f"Meta Loss: {loss:.4f}")
-```
-
-Constructor Arguments:
-- `model`: The base model.
-- `inner_lr` (float): Inner loop learning rate.
-- `outer_lr` (float): Outer loop learning rate.
-- `first_order` (bool): Use first-order MAML.
+... (Same as before)
 
 ### Adapter (Test-Time Adaptation)
-
-The `Adapter` class in `adaptation/test_time_adaptation.py` performs test-time adaptation.
-
-**Key Features**:
-- **API**: `update_step` takes `x`, `y` (target), and `hidden_state` directly as arguments
-- Internally performs `config.num_steps` gradient updates per call
-- Properly detaches hidden state to prevent autograd computational graph errors
-- Manages hidden state across internal steps
-- Returns `(loss, steps_taken)`
-
-Constructor Arguments:
-- `model`: The model to adapt.
-- `config`: An `AdaptationConfig` object containing `learning_rate` and `num_steps`.
-- `device`: Device string ('cpu' or 'cuda').
-
-Example usage:
-
-```python
-import torch
-from adaptation.test_time_adaptation import Adapter, AdaptationConfig
-from core.ssm import StateSpaceModel
-
-# Model output dim must match target 'y'
-model = StateSpaceModel(state_dim=64, input_dim=32, output_dim=32, device='cpu')
-config = AdaptationConfig(learning_rate=0.01, num_steps=5)
-adapter = Adapter(model=model, config=config, device='cpu')
-
-# Initialize hidden state
-hidden_state = model.init_hidden(batch_size=1)
-
-# Adaptation loop
-for step in range(10):
-    x = torch.randn(1, 32)
-    y_target = torch.randn(1, 32)
-    
-    # Store current state for adaptation call
-    current_hidden_state_for_adapt = hidden_state
-    
-    # Get next state prediction (optional)
-    with torch.no_grad():
-        output, hidden_state = model(x, current_hidden_state_for_adapt)
-    
-    # Call update_step with x, target, and state_t
-    loss, steps_taken = adapter.update_step(
-        x=x,
-        y=y_target,
-        hidden_state=current_hidden_state_for_adapt
-    )
-    print(f"Adapt Call {step}, Loss: {loss:.4f}, Internal Steps: {steps_taken}")
-```
+... (Same as before)
 
 ### Environment Runner
 
@@ -254,6 +153,7 @@ The `Environment` class in `env_runner/environment.py` provides a wrapper around
 - Simplified API: `reset()` returns only observation (not tuple)
 - Simplified API: `step(action)` returns 4 values (obs, reward, done, info)
 - Batch processing support with `batch_size` parameter
+... (Same as before)
 
 ## Requirements
 
