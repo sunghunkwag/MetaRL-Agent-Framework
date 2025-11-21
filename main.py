@@ -27,7 +27,10 @@ def collect_data(env, policy_model, num_episodes=10, max_steps_per_episode=100, 
     all_obs, all_actions, all_rewards, all_next_obs, all_dones = [], [], [], [], []
     policy_model.eval()
     
-    obs = env.reset() # Environment wrapper returns obs only for batch_size=1
+    # Environment wrapper returns obs only for batch_size=1
+    # Note: Gymnasium 1.0+ reset() returns (observation, info)
+    reset_result = env.reset()
+    obs = reset_result[0] if isinstance(reset_result, tuple) else reset_result
     hidden_state = policy_model.init_hidden(batch_size=env.batch_size)
     
     total_steps = 0
@@ -63,7 +66,8 @@ def collect_data(env, policy_model, num_episodes=10, max_steps_per_episode=100, 
             total_steps += 1
         
         # Reset at the end of an episode
-        obs = env.reset()
+        reset_result = env.reset()
+        obs = reset_result[0] if isinstance(reset_result, tuple) else reset_result
         hidden_state = policy_model.init_hidden(batch_size=env.batch_size)
             
     # Return as single sequence (Batch=1, Time=T, Dim=D)
@@ -155,7 +159,8 @@ def test_time_adapt(args, model, env, device):
     adapter = Adapter(model=model, config=config, device=device)
     
     # Initialize hidden state
-    obs = env.reset()
+    reset_result = env.reset()
+    obs = reset_result[0] if isinstance(reset_result, tuple) else reset_result
     hidden_state = model.init_hidden(batch_size=1) # This is state_t
     
     for step in range(args.num_adapt_steps): # Total adaptation steps
@@ -188,7 +193,8 @@ def test_time_adapt(args, model, env, device):
         obs = next_obs
         
         if done:
-            obs = env.reset()
+            reset_result = env.reset()
+            obs = reset_result[0] if isinstance(reset_result, tuple) else reset_result
             hidden_state = model.init_hidden(batch_size=1) # Reset state
         
         if step % 10 == 0:
