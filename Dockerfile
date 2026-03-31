@@ -1,34 +1,32 @@
 # ---- Build Stage ----
-# Use a full Python image to build the wheel
-FROM python:3.9 as builder
+FROM python:3.11 AS builder
 
 WORKDIR /app
 
-# Copy only necessary files for building
 COPY pyproject.toml README.md /app/
 COPY core /app/core
 COPY meta_rl /app/meta_rl
 COPY env_runner /app/env_runner
 COPY adaptation /app/adaptation
 
-# Install build dependencies and build the wheel
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir build && \
     python -m build --wheel --outdir dist .
 
 # ---- Final Stage ----
-# Use a slim image for the final runtime
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy the built wheel from the builder stage
+# Install system deps required by gymnasium/mujoco
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libgl1 libglib2.0-0 && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app/dist/*.whl /tmp/
 
-# Install the wheel and runtime dependencies (like gymnasium if needed by scripts)
-# Note: Ensure all runtime deps are covered by the wheel or install them here
 RUN pip install --no-cache-dir /tmp/*.whl && \
-    rm /tmp/*.whl # Clean up the wheel file
+    rm /tmp/*.whl
 
 # Copy application scripts (main, experiments, etc.)
 COPY main.py /app/main.py
