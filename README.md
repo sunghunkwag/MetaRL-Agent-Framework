@@ -3,7 +3,8 @@
 [![Tests](https://img.shields.io/badge/tests-40%20passed-brightgreen)](https://github.com/sunghunkwag/MetaRL-Agent-Framework)
 [![Python](https://img.shields.io/badge/python-≥3.10-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
-[![Docker](https://img.shields.io/badge/docker-automated-blue)](https://github.com/users/sunghunkwag/packages/container/package/metarl-agent-framework)
+[![Docker Build](https://github.com/sunghunkwag/MetaRL-Agent-Framework/actions/workflows/publish-docker.yml/badge.svg)](https://github.com/sunghunkwag/MetaRL-Agent-Framework/actions/workflows/publish-docker.yml)
+[![GHCR](https://img.shields.io/badge/ghcr.io-available-blue)](https://github.com/sunghunkwag/MetaRL-Agent-Framework/pkgs/container/metarl-agent-framework)
 
 A modular meta-reinforcement learning framework combining **State Space Models (SSM)**, **MAML**, and **test-time adaptation** with a unified agent interface.
 
